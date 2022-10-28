@@ -10,8 +10,10 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
   },
   "dependencies": {
+    "firebase": "^9.10.0",
     "react": "18.1.0",
     "react-native": "0.70.3",
+    "react-native-config": "^1.4.11",
     "react-native-sensors": "^7.3.5"
   },
   "devDependencies": {

@@ -14,20 +14,8 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
   },
-  header: {
-    zIndex: 1,
-  },
   contentContainer: {
     paddingHorizontal: 30,
-  },
-  buttonContainer: {
-    alignItems: 'center',
-  },
-  activityIndicator: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-    width: '100%',
   },
 });
 
