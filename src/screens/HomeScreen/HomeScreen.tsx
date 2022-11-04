@@ -15,7 +15,7 @@ const HomeScreen = () => {
   LogBox.ignoreLogs(['new NativeEventEmitter']); // Ignore log notification by message
   setUpdateIntervalForType(SensorTypes.accelerometer, 1000); // defaults to 100ms
   const [subscription, setSubscription] = useState<any>();
-  const [trip, setTrip] = useState<Trip>();
+  const [trip, setTrip] = useState<Trip>({ start: 0, end: 0 });
   const [points, setPoints] = useState<Point[]>([]);
 
   const requestLocationPermission = async () => {
@@ -40,29 +40,33 @@ const HomeScreen = () => {
     }
   };
 
+  const recordPoints = () => {
+    const accelerometerSubscription = accelerometer.subscribe(
+      ({ x, y, z, timestamp }) => {
+        Geolocation.getCurrentPosition(position => {
+          const newPoint: Point = {
+            x: x,
+            y: y,
+            z: z,
+            longitude: position.coords.longitude,
+            latitude: position.coords.latitude,
+          };
+          setPoints(prevPoints => [...prevPoints, newPoint]);
+          console.log(
+            `x: ${x}, y: ${y}, z: ${z}, timestamp: ${timestamp}, lat: ${position.coords.latitude}, long: ${position.coords.longitude}`,
+          );
+        });
+      },
+    );
+    setSubscription(accelerometerSubscription);
+  };
+
   const startTrip = async () => {
     const hasLocationPermissions = await requestLocationPermission();
     if (hasLocationPermissions) {
-      const newTrip: Trip = { date: '20/11/2022' };
+      const newTrip: Trip = { start: Date.now(), end: 0 };
       setTrip(newTrip);
-      const accelerometerSubscription = accelerometer.subscribe(
-        ({ x, y, z, timestamp }) => {
-          Geolocation.getCurrentPosition(position => {
-            const newPoint: Point = {
-              x: x,
-              y: y,
-              z: z,
-              longitude: position.coords.longitude,
-              latitude: position.coords.latitude,
-            };
-            setPoints(prevPoints => [...prevPoints, newPoint]);
-            console.log(
-              `x: ${x}, y: ${y}, z: ${z}, timestamp: ${timestamp}, lat: ${position.coords.latitude}, long: ${position.coords.longitude}`,
-            );
-          });
-        },
-      );
-      setSubscription(accelerometerSubscription);
+      recordPoints();
     } else {
       // TO DO: Aca muestro un mensaje de error de que no acepto los
       // permisos de la ubicacion
@@ -71,10 +75,15 @@ const HomeScreen = () => {
   };
 
   const pauseTrip = () => {
-    console.log('pauseTrip');
+    subscription.unsubscribe();
+  };
+
+  const restartTrip = () => {
+    recordPoints();
   };
 
   const endTrip = () => {
+    trip.end = Date.now();
     subscription.unsubscribe();
     uploadDataToFirestore();
   };
@@ -94,7 +103,7 @@ const HomeScreen = () => {
           longitude: point.longitude,
         });
       });
-      await setDoc(tripReference, { date: trip?.date });
+      await setDoc(tripReference, { start: trip?.start, end: trip?.end });
     } catch (error) {
       // TO DO: Aca muestro un mensaje de error indicando que no se puedieron
       // subir los datos al servidor
@@ -108,6 +117,7 @@ const HomeScreen = () => {
         <Text style={styles.title}>RQSense</Text>
         <Button onPress={startTrip} title="Comenzar" />
         <Button onPress={pauseTrip} title="Pausar" />
+        <Button onPress={restartTrip} title="Reanudar" />
         <Button onPress={endTrip} title="Finalizar" />
       </View>
     </View>

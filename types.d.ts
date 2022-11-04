@@ -1,5 +1,6 @@
 type Trip = {
-  date: string;
+  start: number;
+  end: number;
 };
 
 type Point = {
