@@ -50,6 +50,7 @@ const HomeScreen = () => {
             x: x,
             y: y,
             z: z,
+            timeStamp: timestamp,
             longitude: position.coords.longitude,
             latitude: position.coords.latitude,
           };
@@ -87,14 +88,35 @@ const HomeScreen = () => {
   const endTrip = () => {
     trip.end = Date.now();
     subscription.unsubscribe();
-    uploadDataToFirestore();
+    const processedPoints = processPoints(5);
+    uploadDataToFirestore(processedPoints);
   };
 
-  const uploadDataToFirestore = async () => {
+  const processPoints = (chunkSize: number) => {
+    const response = [];
+    for (let i = 0; i < points.length; i += chunkSize) {
+      const chunk = points.slice(i, i + chunkSize);
+      const maxX = Math.max(...chunk.map(o => o.x));
+      const maxY = Math.max(...chunk.map(o => o.y));
+      const maxZ = Math.max(...chunk.map(o => o.z));
+      const newPoint: Point = {
+        latitude: chunk[0].latitude,
+        longitude: chunk[0].longitude,
+        timeStamp: chunk[0].timeStamp,
+        x: maxX,
+        y: maxY,
+        z: maxZ,
+      };
+      response.push(newPoint);
+    }
+    return response;
+  };
+
+  const uploadDataToFirestore = async (processedPoints: Point[]) => {
     try {
       setUploadingData(true);
       const tripReference = doc(collection(db, 'trips'));
-      points.forEach(async point => {
+      processedPoints.forEach(async point => {
         const pointReference = doc(
           collection(db, `trips/${tripReference.id}/points`),
         );
@@ -102,6 +124,7 @@ const HomeScreen = () => {
           x: point.x,
           y: point.y,
           z: point.z,
+          timeStamp: point.timeStamp,
           latitude: point.latitude,
           longitude: point.longitude,
         });
