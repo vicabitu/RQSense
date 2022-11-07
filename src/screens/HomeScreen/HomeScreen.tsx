@@ -10,6 +10,7 @@ import Geolocation from '@react-native-community/geolocation';
 
 import styles from './styles';
 import { db } from '../../config/firebase';
+import LoaderScreen from '../LoaderScreen';
 
 const HomeScreen = () => {
   LogBox.ignoreLogs(['new NativeEventEmitter']); // Ignore log notification by message
@@ -17,6 +18,7 @@ const HomeScreen = () => {
   const [subscription, setSubscription] = useState<any>();
   const [trip, setTrip] = useState<Trip>({ start: 0, end: 0 });
   const [points, setPoints] = useState<Point[]>([]);
+  const [uploadingData, setUploadingData] = useState<boolean>(false);
 
   const requestLocationPermission = async () => {
     try {
@@ -90,6 +92,7 @@ const HomeScreen = () => {
 
   const uploadDataToFirestore = async () => {
     try {
+      setUploadingData(true);
       const tripReference = doc(collection(db, 'trips'));
       points.forEach(async point => {
         const pointReference = doc(
@@ -104,12 +107,17 @@ const HomeScreen = () => {
         });
       });
       await setDoc(tripReference, { start: trip?.start, end: trip?.end });
+      setUploadingData(false);
     } catch (error) {
       // TO DO: Aca muestro un mensaje de error indicando que no se puedieron
       // subir los datos al servidor
       console.log(`Error: ${error}`);
     }
   };
+
+  if (uploadingData) {
+    return <LoaderScreen />;
+  }
 
   return (
     <View style={styles.container}>
