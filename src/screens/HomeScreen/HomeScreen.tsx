@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { LogBox, View, Text, Button, PermissionsAndroid } from 'react-native';
+import {
+  LogBox,
+  View,
+  Text,
+  PermissionsAndroid,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
 import {
   accelerometer,
   setUpdateIntervalForType,
@@ -11,6 +18,8 @@ import Geolocation from '@react-native-community/geolocation';
 import styles from './styles';
 import { db } from '../../config/firebase';
 import LoaderScreen from '../LoaderScreen';
+import { StateIndicator } from '../../components';
+import { goToScreen } from '../../navigation/controls';
 
 const HomeScreen = () => {
   LogBox.ignoreLogs(['new NativeEventEmitter']); // Ignore log notification by message
@@ -18,6 +27,9 @@ const HomeScreen = () => {
   const [subscription, setSubscription] = useState<any>();
   const [trip, setTrip] = useState<Trip>({ start: 0, end: 0 });
   const [points, setPoints] = useState<Point[]>([]);
+  const [inProcess, setInProcess] = useState<boolean>(false);
+  const [onPause, setOnPause] = useState<boolean>(false);
+  const [finalized, setFinalized] = useState<boolean>(false);
   const [uploadingData, setUploadingData] = useState<boolean>(false);
 
   const requestLocationPermission = async () => {
@@ -65,6 +77,7 @@ const HomeScreen = () => {
   };
 
   const startTrip = async () => {
+    setInProcess(true);
     const hasLocationPermissions = await requestLocationPermission();
     if (hasLocationPermissions) {
       const newTrip: Trip = { start: Date.now(), end: 0 };
@@ -78,16 +91,26 @@ const HomeScreen = () => {
   };
 
   const pauseTrip = () => {
+    setOnPause(true);
     subscription.unsubscribe();
   };
 
   const restartTrip = () => {
+    setOnPause(false);
     recordPoints();
   };
 
   const endTrip = () => {
+    setFinalized(true);
     trip.end = Date.now();
     subscription.unsubscribe();
+  };
+
+  const uploadTrip = () => {
+    setInProcess(false);
+    setOnPause(false);
+    setFinalized(false);
+    setUploadingData(false);
     const processedPoints = processPoints(5);
     uploadDataToFirestore(processedPoints);
   };
@@ -131,10 +154,39 @@ const HomeScreen = () => {
       });
       await setDoc(tripReference, { start: trip?.start, end: trip?.end });
       setUploadingData(false);
+      goToScreen('SuccessfulScreen');
     } catch (error) {
       // TO DO: Aca muestro un mensaje de error indicando que no se puedieron
       // subir los datos al servidor
       console.log(`Error: ${error}`);
+    }
+  };
+
+  const canStart = () => {
+    return inProcess;
+  };
+
+  const canPause = () => {
+    return !inProcess || onPause || finalized;
+  };
+
+  const canRestart = () => {
+    return !onPause || finalized;
+  };
+
+  const canEnd = () => {
+    return !inProcess || finalized;
+  };
+
+  const getActiveState = () => {
+    if (!inProcess) {
+      return 1;
+    } else if (inProcess && !finalized) {
+      return 2;
+    } else if (finalized) {
+      return 3;
+    } else {
+      return 4;
     }
   };
 
@@ -144,12 +196,61 @@ const HomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.mainContent}>
-        <Text style={styles.title}>RQSense</Text>
-        <Button onPress={startTrip} title="Comenzar" />
-        <Button onPress={pauseTrip} title="Pausar" />
-        <Button onPress={restartTrip} title="Reanudar" />
-        <Button onPress={endTrip} title="Finalizar" />
+      <View style={styles.imageContainer}>
+        <Image
+          source={require('../../images/rqsense_logo.png')}
+          style={styles.image}
+        />
+      </View>
+      <View style={styles.stateIndicatorContainer}>
+        <StateIndicator state={getActiveState()} />
+      </View>
+      <View style={styles.buttonsContainer}>
+        {finalized ? (
+          <Text style={styles.finishMessage}>
+            Recorrido listo para cargar al servidor.
+          </Text>
+        ) : (
+          <TouchableOpacity
+            style={styles.button}
+            onPress={startTrip}
+            disabled={canStart()}>
+            <Text style={styles.buttonText}>
+              {inProcess ? 'Recorrido en proceso...' : 'Iniciar recorrido'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        <View style={styles.pauseButtonsContainer}>
+          <TouchableOpacity
+            style={styles.buttonPause}
+            onPress={pauseTrip}
+            disabled={canPause()}>
+            <Text style={styles.buttonText}>
+              {onPause ? 'Pausado' : 'Pausar'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.buttonResume}
+            onPress={restartTrip}
+            disabled={canRestart()}>
+            <Text style={styles.buttonText}>Reanudar</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={endTrip}
+          disabled={canEnd()}>
+          <Text style={styles.buttonText}>
+            {finalized ? 'Recorrido finalizado' : 'Finalizar recorrido'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.downSpace}>
+        {finalized && (
+          <TouchableOpacity style={styles.buttonUpload} onPress={uploadTrip}>
+            <Text style={styles.buttonText}>Cargar recorrido</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
