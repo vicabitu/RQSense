@@ -111,6 +111,8 @@ const HomeScreen = () => {
     setOnPause(false);
     setFinalized(false);
     setUploadingData(false);
+    setTrip({ start: 0, end: 0 });
+    setPoints([]);
     const processedPoints = processPoints(5);
     uploadDataToFirestore(processedPoints);
   };
