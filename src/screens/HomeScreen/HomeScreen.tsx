@@ -77,9 +77,9 @@ const HomeScreen = () => {
   };
 
   const startTrip = async () => {
-    setInProcess(true);
     const hasLocationPermissions = await requestLocationPermission();
     if (hasLocationPermissions) {
+      setInProcess(true);
       const newTrip: Trip = { start: Date.now(), end: 0 };
       setTrip(newTrip);
       recordPoints();
@@ -107,14 +107,24 @@ const HomeScreen = () => {
   };
 
   const uploadTrip = () => {
+    try {
+      clearState();
+      const processedPoints = processPoints(5);
+      uploadDataToFirestore(processedPoints);
+    } catch (error) {
+      console.log(`Error!: ${error}`);
+      clearState();
+      goToScreen('ErrorScreen');
+    }
+  };
+
+  const clearState = () => {
     setInProcess(false);
     setOnPause(false);
     setFinalized(false);
     setUploadingData(false);
     setTrip({ start: 0, end: 0 });
     setPoints([]);
-    const processedPoints = processPoints(5);
-    uploadDataToFirestore(processedPoints);
   };
 
   const processPoints = (chunkSize: number) => {
@@ -138,30 +148,24 @@ const HomeScreen = () => {
   };
 
   const uploadDataToFirestore = async (processedPoints: Point[]) => {
-    try {
-      setUploadingData(true);
-      const tripReference = doc(collection(db, 'trips'));
-      processedPoints.forEach(async point => {
-        const pointReference = doc(
-          collection(db, `trips/${tripReference.id}/points`),
-        );
-        await setDoc(pointReference, {
-          x: point.x,
-          y: point.y,
-          z: point.z,
-          timeStamp: point.timeStamp,
-          latitude: point.latitude,
-          longitude: point.longitude,
-        });
+    setUploadingData(true);
+    const tripReference = doc(collection(db, 'trips'));
+    processedPoints.forEach(async point => {
+      const pointReference = doc(
+        collection(db, `trips/${tripReference.id}/points`),
+      );
+      await setDoc(pointReference, {
+        x: point.x,
+        y: point.y,
+        z: point.z,
+        timeStamp: point.timeStamp,
+        latitude: point.latitude,
+        longitude: point.longitude,
       });
-      await setDoc(tripReference, { start: trip?.start, end: trip?.end });
-      setUploadingData(false);
-      goToScreen('SuccessfulScreen');
-    } catch (error) {
-      // TO DO: Aca muestro un mensaje de error indicando que no se puedieron
-      // subir los datos al servidor
-      console.log(`Error: ${error}`);
-    }
+    });
+    await setDoc(tripReference, { start: trip?.start, end: trip?.end });
+    setUploadingData(false);
+    goToScreen('SuccessfulScreen');
   };
 
   const canStart = () => {
