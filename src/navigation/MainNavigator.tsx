@@ -6,6 +6,7 @@ import {
   HomeScreen,
   LoaderScreen,
   SuccessfulScreen,
+  ErrorScreen,
 } from '../screens';
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +18,7 @@ const MainNavigator = () => (
     <Stack.Screen name="HomeScreen" component={HomeScreen} />
     <Stack.Screen name="LoaderScreen" component={LoaderScreen} />
     <Stack.Screen name="SuccessfulScreen" component={SuccessfulScreen} />
+    <Stack.Screen name="ErrorScreen" component={ErrorScreen} />
   </Stack.Navigator>
 );
 
